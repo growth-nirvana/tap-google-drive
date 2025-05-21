@@ -11,22 +11,8 @@ plugins:
   - name: tap-google-drive
     namespace: tap_google_drive
     pip_url: -e .
-    settings:
-      - name: folder_url
-        kind: password
-        env: GOOGLE_DRIVE_FOLDER_URL
-      - name: client_id
-        kind: password
-        env: GOOGLE_DRIVE_CLIENT_ID
-      - name: client_secret
-        kind: password
-        env: GOOGLE_DRIVE_CLIENT_SECRET
-      - name: refresh_token
-        kind: password
-        env: GOOGLE_DRIVE_REFRESH_TOKEN
     capabilities:
     - state
-    - catalog
     - discover
     - about
     - stream-maps
@@ -36,10 +22,30 @@ plugins:
     - [folder_url, client_id, client_secret, refresh_token]
 
     # TODO: Declare default configuration values here:
+    settings:
+    - name: folder_url
+      env: GOOGLE_DRIVE_FOLDER_URL
+      kind: password
+      sensitive: true
+    - name: client_id
+      env: GOOGLE_DRIVE_CLIENT_ID
+      kind: password
+      sensitive: true
+    - name: client_secret
+      env: GOOGLE_DRIVE_CLIENT_SECRET
+      kind: password
+      sensitive: true
+    - name: refresh_token
+      env: GOOGLE_DRIVE_REFRESH_TOKEN
+      kind: password
+      sensitive: true
     config:
-      start_date: '1970-01-01T00:00:00Z'
+      start_date: '1980-01-01T00:00:00Z'
 
   loaders:
   - name: target-jsonl
     variant: andyh1203
     pip_url: target-jsonl
+  - name: target-bigquery
+    variant: z3z1ma
+    pip_url: git+https://github.com/z3z1ma/target-bigquery.git

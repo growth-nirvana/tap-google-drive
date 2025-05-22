@@ -56,6 +56,8 @@ Run the tap:
 meltano run tap-google-drive target-jsonl
 ```
 
+> Note: The CSV Stream is configured to stream all streams and fields in the catalog regardless of selection metadata
+
 ## Column Name Conversion
 
 The tap automatically converts CSV column names to BigQuery-compliant format by:

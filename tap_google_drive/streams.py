@@ -2,20 +2,23 @@
 
 from __future__ import annotations
 
+import singer_sdk._singerlib as singer
 import csv
 import io
 import re
 from typing import Any, Dict, Iterable, Optional
-
 from singer_sdk import Stream, Tap
 from singer_sdk.typing import (
     DateTimeType,
     PropertiesList,
     Property,
     StringType,
-    IntegerType,
+    IntegerType
 )
-
+from singer_sdk.helpers._typing import (
+    conform_record_data_types,
+)
+from singer_sdk.helpers._util import utc_now
 from tap_google_drive.client import GoogleDriveClient
 
 
@@ -57,6 +60,10 @@ class CSVFileStream(Stream):
         
         # Initialize parent class
         super().__init__(tap, name=name)
+
+    @property
+    def selected(self) -> bool:
+        return True
 
     @property
     def schema(self) -> dict:
@@ -158,3 +165,37 @@ class CSVFileStream(Stream):
             yield record
             
         self.logger.info(f"Processed {record_count} records from {self.file_name}")
+
+
+
+    def _generate_record_messages(
+        self,
+        record: dict,
+    ):
+        """Write out a RECORD message.
+
+        Args:
+            record: A single stream record.
+
+        Yields:
+            Record message objects.
+        """
+        #pop_deselected_record_properties(record, self.schema, self.mask, self.logger)
+        record = conform_record_data_types(
+            stream_name=self.name,
+            record=record,
+            schema=self.schema,
+            level=self.TYPE_CONFORMANCE_LEVEL,
+            logger=self.logger,
+        )
+        for stream_map in self.stream_maps:
+            mapped_record = stream_map.transform(record)
+            # Emit record if not filtered
+            if mapped_record is not None:
+                yield singer.RecordMessage(
+                    stream=stream_map.stream_alias,
+                    record=mapped_record,
+                    version=None,
+                    time_extracted=utc_now(),
+                )
+

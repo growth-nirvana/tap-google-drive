@@ -64,6 +64,7 @@ class CSVFileStream(Stream):
     @property
     def selected(self) -> bool:
         return True
+
     
     def _generate_schema_messages(
         self,
@@ -87,6 +88,7 @@ class CSVFileStream(Stream):
                 stream_map.transformed_key_properties,
                 bookmark_keys,
             )
+
 
     @property
     def schema(self) -> dict:

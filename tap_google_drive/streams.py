@@ -53,7 +53,10 @@ class CSVFileStream(Stream):
         # Get initial schema from CSV headers
         content = self.client.get_file_content(self.file_id)
         reader = csv.reader(io.StringIO(content))
-        self._headers = next(reader)  # Get the headers
+        raw_headers = next(reader)
+        # Create mapping of non-empty headers to their indices
+        self._header_indices = {i: header for i, header in enumerate(raw_headers) if header.strip()}
+        self._headers = list(self._header_indices.values())
         
         # Convert file name to BigQuery-compliant name
         name = self._convert_to_bigquery_name(file_name)
@@ -171,13 +174,14 @@ class CSVFileStream(Stream):
         content = self.client.get_file_content(self.file_id)
         
         # Parse CSV content
-        reader = csv.DictReader(io.StringIO(content))
+        reader = csv.reader(io.StringIO(content))
+        next(reader)  # Skip header row
         record_count = 0
         for row_number, row in enumerate(reader, start=1):
-            # Convert column names to BigQuery format
+            # Only include values for non-empty headers
             record = {
-                self._convert_to_bigquery_name(k): v
-                for k, v in row.items()
+                self._convert_to_bigquery_name(self._headers[i]): row[idx]
+                for i, idx in enumerate(self._header_indices.keys())
             }
             # Add metadata
             record.update({

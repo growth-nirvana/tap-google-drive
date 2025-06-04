@@ -20,7 +20,7 @@ from singer_sdk.helpers._typing import (
 )
 from singer_sdk.helpers._util import utc_now
 from tap_google_drive.client import GoogleDriveClient
-
+from singer_sdk.mapper import RemoveRecordTransform
 
 class CSVFileStream(Stream):
     """Stream for reading CSV files from Google Drive."""
@@ -64,6 +64,31 @@ class CSVFileStream(Stream):
     @property
     def selected(self) -> bool:
         return True
+
+    
+    def _generate_schema_messages(
+        self,
+    ):
+        """Generate schema messages from stream maps.
+
+        Yields:
+            Schema message objects.
+        """
+        bookmark_keys = [self.replication_key] if self.replication_key else None
+        for stream_map in self.stream_maps:
+            if isinstance(stream_map, RemoveRecordTransform):
+                # Don't emit schema if the stream's records are all ignored.
+                continue
+
+            # Explicitely use base schema for schema messages
+            # This makes sure full properties gets emitted regardless of selection
+            yield singer.SchemaMessage(
+                stream_map.stream_alias,
+                self.schema,
+                stream_map.transformed_key_properties,
+                bookmark_keys,
+            )
+
 
     @property
     def schema(self) -> dict:

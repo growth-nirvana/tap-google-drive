@@ -19,7 +19,7 @@ from singer_sdk.typing import (
 from singer_sdk._singerlib import Catalog, StateMessage
 from singer_sdk.streams import Stream
 
-from tap_google_drive.streams import CSVFileStream
+from tap_google_drive.streams import CSVFileStream, EmptyCSVError
 from tap_google_drive.client import GoogleDriveClient
 
 
@@ -73,11 +73,15 @@ class TapGoogleDrive(Tap):
         streams = []
         for file in files:
             # Create a stream for each CSV file
-            stream = CSVFileStream(
-                tap=self,
-                file_id=file["id"],
-                file_name=file["name"]
-            )
+            try:
+                stream = CSVFileStream(
+                    tap=self,
+                    file_id=file["id"],
+                    file_name=file["name"]
+                )
+            except EmptyCSVError as err:
+                self.logger.warning("Skipping file during discovery: %s", err)
+                continue
             streams.append(stream)
         
         return streams

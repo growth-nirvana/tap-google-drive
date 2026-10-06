@@ -22,6 +22,11 @@ from singer_sdk.helpers._util import utc_now
 from tap_google_drive.client import GoogleDriveClient
 from singer_sdk.mapper import RemoveRecordTransform
 
+
+class EmptyCSVError(ValueError):
+    """Raised when a CSV file has no readable header row."""
+
+
 class CSVFileStream(Stream):
     """Stream for reading CSV files from Google Drive."""
 
@@ -53,9 +58,19 @@ class CSVFileStream(Stream):
         # Get initial schema from CSV headers
         content = self.client.get_file_content(self.file_id)
         reader = csv.reader(io.StringIO(content))
-        raw_headers = next(reader)
+        try:
+            raw_headers = next(reader)
+        except StopIteration as exc:
+            raise EmptyCSVError(
+                f"CSV file '{self.file_name}' ({self.file_id}) is empty."
+            ) from exc
+
         # Create mapping of non-empty headers to their indices
         self._header_indices = {i: header for i, header in enumerate(raw_headers) if header.strip()}
+        if not self._header_indices:
+            raise EmptyCSVError(
+                f"CSV file '{self.file_name}' ({self.file_id}) has an empty header row."
+            )
         self._headers = list(self._header_indices.values())
         
         # Convert file name to BigQuery-compliant name
@@ -175,7 +190,16 @@ class CSVFileStream(Stream):
         
         # Parse CSV content
         reader = csv.reader(io.StringIO(content))
-        next(reader)  # Skip header row
+        try:
+            next(reader)  # Skip header row
+        except StopIteration:
+            self.logger.warning(
+                "Skipping file '%s' (%s): file content is empty during sync.",
+                self.file_name,
+                self.file_id,
+            )
+            return
+
         record_count = 0
         for row_number, row in enumerate(reader, start=1):
             # Only include values for non-empty headers
